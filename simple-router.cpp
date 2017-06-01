@@ -18,6 +18,7 @@
 #include "core/utils.hpp"
 
 #include <fstream>
+#include <cstring>
 
 namespace simple_router {
 
@@ -38,6 +39,14 @@ SimpleRouter::handlePacket(const Buffer& packet, const std::string& inIface)
   std::cerr << getRoutingTable() << std::endl;
 
   // FILL THIS IN
+  
+  uint8_t* packet_h = new uint8_t[packet.size()];
+  std::memcpy((void*)packet_h, (const void*)packet.data(), packet.size());
+  Buffer src(6);
+  Buffer dest(6);
+  std::memcpy((void*)&src[0], (const void*)&packet_h[0], 6);
+  std::memcpy((void*)&dest[0], (const void*)&packet_h[6], 6);
+  std::cerr << "Src: " << macToString(src) << std::endl << "Dest: " << macToString(dest) << std::endl;
 
 }
 //////////////////////////////////////////////////////////////////////////
