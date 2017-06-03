@@ -249,5 +249,11 @@ void print_hdrs(const Buffer& buffer)
   print_hdrs(buffer.data(), buffer.size());
 }
 
+Buffer array_to_buffer(uint8_t* data, size_t len)
+{
+	Buffer b(len);
+	memcpy((void*)&b[0], (const void*)data, len);
+	return b;
+}
 
 } // namespace simple_router

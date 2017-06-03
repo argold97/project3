@@ -60,6 +60,8 @@ void print_hdrs(const uint8_t* buf, uint32_t length);
 
 void print_hdrs(const Buffer& buffer);
 
+Buffer array_to_buffer(uint8_t* data, size_t len);
+
 } // namespace simple_router
 
 #endif // SIMPLE_ROUTER_CORE_UTILS_HPP

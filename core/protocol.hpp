@@ -51,6 +51,10 @@
 
 #define ICMP_DATA_SIZE 28
 
+#ifndef IP_ADDR_LEN
+#define IP_ADDR_LEN 4
+#endif
+
 namespace simple_router {
 
 using Buffer = std::vector<unsigned char>;
@@ -150,6 +154,8 @@ struct arp_hdr
   unsigned char   arp_tha[ETHER_ADDR_LEN]; /* target hardware address      */
   uint32_t        arp_tip;                 /* target IP address            */
 } __attribute__ ((packed)) ;
+
+const Buffer bcast_mac{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 } // namespace simple_router
 

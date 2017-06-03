@@ -42,6 +42,15 @@ public:
    */
   void
   handlePacket(const Buffer& packet, const std::string& inIface);
+  
+  void 
+  handlePacket_arp(const Buffer& packet, const std::string& inIface);
+  
+  void 
+  handlePacket_ip(const Buffer& packet);
+  
+  void 
+  send_arp_reply(const arp_hdr& arp_r, const std::string& inIface);
 
   /**
    * USE THIS METHOD TO SEND PACKETS
