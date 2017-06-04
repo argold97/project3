@@ -43,8 +43,11 @@ SimpleRouter::handlePacket(const Buffer& packet, const std::string& inIface)
   print_hdrs(packet);
   std::cerr << std::endl;
   
+  if(packet.size() < sizeof(ethernet_hdr))
+	  return;
+  
   ethernet_hdr ethernet_h;
-  std::memcpy(&ethernet_h, (const void*)packet.data(), sizeof(ethernet_hdr));
+  std::memcpy(&ethernet_h, (const void*)packet.data(), sizeof(ethernet_h));
   
   Buffer dest = array_to_buffer((uint8_t*)&ethernet_h.ether_dhost, ETHER_ADDR_LEN);
   
@@ -114,7 +117,7 @@ SimpleRouter::send_arp_reply(const arp_hdr& arp_r, const std::string& inIface)
 	arp_h.arp_hln = ETHER_ADDR_LEN;
 	arp_h.arp_pln = IP_ADDR_LEN;
 	arp_h.arp_op = htons(arp_op_reply);
-	arp_h.arp_sip = arp_r.arp_tip;
+	arp_h.arp_sip = iface->ip;
 	arp_h.arp_tip = arp_r.arp_sip;
 	memcpy((void*)&arp_h.arp_sha, (const void*)iface->addr.data(), ETHER_ADDR_LEN);
 	memcpy((void*)&arp_h.arp_tha, (const void*)arp_r.arp_sha, ETHER_ADDR_LEN);
@@ -161,8 +164,29 @@ SimpleRouter::send_arp_request(uint32_t tip_addr, const std::string& outIface)
 void 
 SimpleRouter::handlePacket_ip(const Buffer& packet)
 {
+	if(packet.size() < sizeof(ip_hdr))
+		return;
 	
+	ip_hdr ip_h;
+	std::memcpy((void*)&ip_h, (const void*)packet.data(), sizeof(ip_h));
+	
+	uint16_t chk = cksum((const void*)&ip_h, sizeof(ip_h));
+	if(chk != 0xFFFF)
+	{
+		std::cerr << "Dropped IP packet: Bad cksum" << std::endl;
+		return;
+	}
+	
+	const Interface* dest_iface = findIfaceByIp(ip_h.ip_dst);
+	
+	if(dest_iface == nullptr)
+	{
+		//forward
+	}else {
+		//check ICMP
+	}
 }
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
