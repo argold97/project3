@@ -54,6 +54,9 @@ public:
   
   void 
   send_arp_request(uint32_t tip_addr, const std::string& outIface);
+
+  void
+  forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
   
   void
   handlePacket_icmp(const ip_hdr& ip_h, const Buffer& packet);

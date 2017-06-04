@@ -177,19 +177,28 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 		return;
 	}
 	
+	if(packet.size() < ntohs(ip_h.ip_len))
+	{
+		std::cerr << "Dropped IP packet: Invalid length" << std::endl;
+		return;
+	}
+	
+	Buffer payload = array_to_buffer((uint8_t*)packet.data() + ip_h.ip_hl * 4, ntohs(ip_h.ip_len) - ip_h.ip_hl * 4);		
+	
 	const Interface* dest_iface = findIfaceByIp(ip_h.ip_dst);
 	
 	if(dest_iface == nullptr)
-	{
-		//forward
-	}else if(ip_h.ip_p == ip_protocol_icmp) {
-		if(packet.size() >= ntohs(ip_h.ip_len))
-			handlePacket_icmp(ip_h, array_to_buffer((uint8_t*)packet.data() + ip_h.ip_hl * 4, ntohs(ip_h.ip_len) - ip_h.ip_hl * 4));
-		else
-			std::cerr << "Dropped IP packet: Invalid length" << std::endl;
-	}else {
+		forward_ip_packet(ip_h, payload);
+	else if(ip_h.ip_p == ip_protocol_icmp)
+		handlePacket_icmp(ip_h, payload);
+	else
 		std::cerr << "Dropped IP packet: Addressed to router but no ICMP message" << std::endl;
-	}
+}
+
+void
+SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
+{
+	
 }
 
 void
