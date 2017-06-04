@@ -256,4 +256,12 @@ Buffer array_to_buffer(uint8_t* data, size_t len)
 	return b;
 }
 
+void pack_hdr(Buffer& buf, uint8_t* data, size_t len)
+{
+	for(size_t i = 0; i < len; i++)
+	{
+		buf.push_back(data[i]);
+	}
+}
+
 } // namespace simple_router

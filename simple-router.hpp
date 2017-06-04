@@ -51,6 +51,9 @@ public:
   
   void 
   send_arp_reply(const arp_hdr& arp_r, const std::string& inIface);
+  
+  void 
+  send_arp_request(uint32_t tip_addr, const std::string& outIface);
 
   /**
    * USE THIS METHOD TO SEND PACKETS
