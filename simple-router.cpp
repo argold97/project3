@@ -198,7 +198,9 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 void
 SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 {
+	RoutingTableEntry next_hop = getRoutingTable().lookup(ip_h.ip_dst);
 	
+	std::cerr << "Next hop: " << ipToString(next_hop.gw) << " " << next_hop.ifName << std::endl;
 }
 
 void

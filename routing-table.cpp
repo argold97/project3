@@ -35,8 +35,16 @@ RoutingTable::lookup(uint32_t ip) const
     //m_entries is a list; iterate through
   size_t max_prefix_len = 0;
   const RoutingTableEntry* max_entry = nullptr;
+  const RoutingTableEntry* default_entry = nullptr;
+  
   for (std::list<RoutingTableEntry>::const_iterator curr = m_entries.begin(), last = m_entries.end(); curr != last; curr++) 
   {
+	  if(curr->mask == 0)
+	  {
+		  default_entry = &(*curr);
+		  continue;
+	  }
+	  
       uint32_t tmp = ~(ip^(curr->dest));
       size_t matching_len = get_netLength(tmp);
 	  size_t network_len = get_netLength(curr->mask);
@@ -52,9 +60,12 @@ RoutingTable::lookup(uint32_t ip) const
   }
   if (max_entry == nullptr)
   {
+	  if(default_entry != nullptr)
+		  return *(default_entry);
+	  else
         throw std::runtime_error("Routing entry not found");
-        //std::cerr << "Routing entry not found" << std::endl;
   }
+	
   return *(max_entry);
   // FILL THIS IN
 }
