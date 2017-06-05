@@ -33,15 +33,16 @@ RoutingTableEntry
 RoutingTable::lookup(uint32_t ip) const
 {
     //m_entries is a list; iterate through
-  uint32_t max_prefix_len = 0;
+  size_t max_prefix_len = 0;
   const RoutingTableEntry* max_entry = nullptr;
   for (std::list<RoutingTableEntry>::const_iterator curr = m_entries.begin(), last = m_entries.end(); curr != last; curr++) 
   {
-      uint32_t tmp = ip^((*curr).dest);
-      uint32_t matching_len = get_netLength(tmp);
-      if (matching_len > (*curr).mask)
+      uint32_t tmp = ~(ip^(curr->dest));
+      size_t matching_len = get_netLength(tmp);
+	  size_t network_len = get_netLength(curr->mask);
+      if (matching_len > network_len)
       {
-          matching_len = (*curr).mask;
+          matching_len = network_len;
       }
       if (matching_len > max_prefix_len)
       {
@@ -54,29 +55,23 @@ RoutingTable::lookup(uint32_t ip) const
         throw std::runtime_error("Routing entry not found");
         //std::cerr << "Routing entry not found" << std::endl;
   }
-  //else
-    return *(max_entry);
-
+  return *(max_entry);
   // FILL THIS IN
-
 }
 
-uint32_t RoutingTable::get_netLength(uint32_t net) const
+size_t RoutingTable::get_netLength(uint32_t net) const
 {
-      //convert to network byte order
+    //convert to network byte order
 
-      /*-- Built-in Function: int __builtin_clz (unsigned int x)
-     Returns the number of leading 0-bits in X, starting at the most
-     significant bit position.  If X is 0, the result is undefined.*/
+    /*-- Built-in Function: int __builtin_clz (unsigned int x)
+    Returns the number of leading 0-bits in X, starting at the most
+    significant bit position.  If X is 0, the result is undefined.*/
     //if X is 0, set 32
 
-      uint32_t tmp = ~(htonl(net));
-      int len = __builtin_clz(tmp);
-      if (!len)//len == 0
-      {
-        len = 32;
-      }
-      return len;
+    uint32_t tmp = ~(ntohl(net));
+	if(!tmp)
+		return 32;
+	return __builtin_clz(tmp);
 }
 
 
