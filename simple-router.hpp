@@ -43,6 +43,9 @@ public:
   void
   handlePacket(const Buffer& packet, const std::string& inIface);
   
+  void
+  send_eth_frame(const Buffer& dhost, const Buffer& shost, uint16_t ethertype, const std::string& outIface, Buffer& payload);
+  
   void 
   handlePacket_arp(const Buffer& packet, const std::string& inIface);
   
@@ -57,6 +60,9 @@ public:
 
   void
   forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
+  
+  void
+  send_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
   
   void
   handlePacket_icmp(const ip_hdr& ip_h, const Buffer& packet);

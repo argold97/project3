@@ -79,6 +79,21 @@ SimpleRouter::handlePacket(const Buffer& packet, const std::string& inIface)
 }
 
 void
+SimpleRouter::send_eth_frame(const Buffer& dhost, const Buffer& shost, uint16_t ethertype, const std::string& outIface, Buffer& payload)
+{
+	ethernet_hdr ethernet_h;
+	memcpy((void*)&ethernet_h.ether_dhost, (const void*)dhost.data(), ETHER_ADDR_LEN);
+	memcpy((void*)&ethernet_h.ether_shost, (const void*)shost.data(), ETHER_ADDR_LEN);
+	ethernet_h.ether_type = htons(ethertype);
+	
+	Buffer frame;
+	pack_hdr(frame, (uint8_t*)&ethernet_h, sizeof(ethernet_h));
+	pack_hdr(frame, (uint8_t*)payload.data(), payload.size());
+	
+	sendPacket(frame, outIface);
+}
+
+void
 SimpleRouter::handlePacket_arp(const Buffer& packet, const std::string& inIface)
 {
 	arp_hdr arp_h;
@@ -106,11 +121,6 @@ SimpleRouter::send_arp_reply(const arp_hdr& arp_r, const std::string& inIface)
 		return;
 	}
 	
-	ethernet_hdr ethernet_h;
-	memcpy((void*)&ethernet_h.ether_dhost, (const void*)arp_r.arp_sha, ETHER_ADDR_LEN);
-	memcpy((void*)&ethernet_h.ether_shost, (const void*)iface->addr.data(), ETHER_ADDR_LEN);
-	ethernet_h.ether_type = htons(ethertype_arp);
-	
 	arp_hdr arp_h;
 	arp_h.arp_hrd = htons(arp_hrd_ethernet);
 	arp_h.arp_pro = htons(ethertype_ip);
@@ -123,10 +133,9 @@ SimpleRouter::send_arp_reply(const arp_hdr& arp_r, const std::string& inIface)
 	memcpy((void*)&arp_h.arp_tha, (const void*)arp_r.arp_sha, ETHER_ADDR_LEN);
 	
 	Buffer packet;
-	pack_hdr(packet, (uint8_t*)&ethernet_h, sizeof(ethernet_h));
 	pack_hdr(packet, (uint8_t*)&arp_h, sizeof(arp_h));
 	
-	sendPacket(packet, inIface);
+	send_eth_frame(array_to_buffer(arp_r.arp_sha, ETHER_ADDR_LEN), iface->addr, ethertype_arp, inIface, packet);
 }
 
 void
@@ -138,10 +147,6 @@ SimpleRouter::send_arp_request(uint32_t tip_addr, const std::string& outIface)
 		std::cerr << "Error: Missing iface" << std::endl;
 		return;
 	}
-	
-	ethernet_hdr ethernet_h;
-	memcpy((void*)&ethernet_h.ether_dhost, (const void*)bcast_mac.data(), ETHER_ADDR_LEN);
-	memcpy((void*)&ethernet_h.ether_shost, (const void*)iface->addr.data(), ETHER_ADDR_LEN);
 	
 	arp_hdr arp_h;
 	arp_h.arp_hrd = htons(arp_hrd_ethernet);
@@ -155,10 +160,9 @@ SimpleRouter::send_arp_request(uint32_t tip_addr, const std::string& outIface)
 	memcpy((void*)&arp_h.arp_tha, (const void*)bcast_mac.data(), ETHER_ADDR_LEN);
 	
 	Buffer packet;
-	pack_hdr(packet, (uint8_t*)&ethernet_h, sizeof(ethernet_h));
 	pack_hdr(packet, (uint8_t*)&arp_h, sizeof(arp_h));
 	
-	sendPacket(packet, outIface);
+	send_eth_frame(bcast_mac, iface->addr, ethertype_arp, outIface, packet);
 }
 
 void 
@@ -198,9 +202,39 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 void
 SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 {
+	
+}
+
+void
+SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
+{
 	RoutingTableEntry next_hop = getRoutingTable().lookup(ip_h.ip_dst);
 	
 	std::cerr << "Next hop: " << ipToString(next_hop.gw) << " " << next_hop.ifName << std::endl;
+	
+	const Interface* outIface = findIfaceByName(next_hop.ifName);
+	if(outIface == nullptr)
+	{
+		std::cerr << "Error: Missing iface" << std::endl;
+		return;
+	}
+	
+	std::shared_ptr<ArpEntry> entry = m_arp.lookup(next_hop.gw);
+	
+	if(entry != nullptr)
+	{
+		std::cerr << "MAC: " << macToString(entry->mac) << std::endl;
+		
+		Buffer packet;
+		pack_hdr(packet, (uint8_t*)&ip_h, sizeof(ip_h));
+		pack_hdr(packet, (uint8_t*)payload.data(), payload.size());
+		
+		send_eth_frame(entry->mac, outIface->addr, ethertype_ip, next_hop.ifName, packet);
+		
+		free(entry.get());
+	}else {
+		
+	}
 }
 
 void
@@ -256,7 +290,7 @@ SimpleRouter::send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const B
 	uint16_t chk = cksum((const void*)payload.data(), payload.size());
 	memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
 	
-	forward_ip_packet(ip_h, payload);
+	send_ip_packet(ip_h, payload);
 }
 
 //////////////////////////////////////////////////////////////////////////
