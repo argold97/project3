@@ -31,11 +31,39 @@ namespace simple_router {
 RoutingTableEntry
 RoutingTable::lookup(uint32_t ip) const
 {
+    //m_entries is a list; iterate through
+  for (std::list<RoutingTableEntry>::const_iterator curr = m_entries.begin(), next = curr++, last = m_entries.end(); curr != last; curr++) 
+  {
+      if ((*curr).mask > (*next).mask)
+      {
+
+      }
+  }
 
   // FILL THIS IN
 
   throw std::runtime_error("Routing entry not found");
 }
+
+uint32_t RoutingTable::get_netLength(uint32_t net)
+{
+      //convert to network byte order
+
+      /*-- Built-in Function: int __builtin_clz (unsigned int x)
+     Returns the number of leading 0-bits in X, starting at the most
+     significant bit position.  If X is 0, the result is undefined.*/
+    //if X is 0, set 32
+
+      uint32_t tmp = ~(htonl(net));
+      int len = __builtin_clz(tmp);
+      if (!len)//len == 0
+      {
+        len = 32;
+      }
+      return len;
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
