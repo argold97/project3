@@ -48,7 +48,7 @@ public:
   RoutingTableEntry
   lookup(uint32_t ip) const;
 
-  uint32_t RoutingTable::get_netLength(uint32_t net);
+  uint32_t get_netLength(uint32_t net) const;
 
   bool
   load(const std::string& file);
