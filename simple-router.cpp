@@ -204,13 +204,57 @@ SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 void
 SimpleRouter::handlePacket_icmp(const ip_hdr& ip_h, const Buffer& packet)
 {
+	if(packet.size() < sizeof(icmp_hdr))
+		return;
 	
+	icmp_hdr icmp_h;
+	memcpy((void*)&icmp_h, (const void*)packet.data(), sizeof(icmp_h));
+	
+	uint16_t chk = cksum((const void*)packet.data(), packet.size());
+	if(chk != 0xFFFF)
+	{
+		std::cerr << "Dropped ICMP message: Bad cksum" << std::endl;
+		return;
+	}
+	
+	if(icmp_h.icmp_type == icmp_echo)
+	{
+		send_icmp_echo_reply(ip_h.ip_dst, ip_h.ip_src, array_to_buffer((uint8_t*)packet.data() + sizeof(icmp_h), packet.size() - sizeof(icmp_h)));
+	}else {
+		std::cerr << "Dropped ICMP message: Unknown type" << std::endl;
+	}
 }
 
 void
-SimpleRouter::send_icmp_echo_reply(uint32_t tip_addr, const Buffer& data)
+SimpleRouter::send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const Buffer& data)
 {
+	ip_hdr ip_h;
+	ip_h.ip_hl = sizeof(ip_h) / 4;
+	ip_h.ip_v = ip_v4;
+	ip_h.ip_tos = 0;
+	ip_h.ip_len = sizeof(ip_h) + data.size();
+	ip_h.ip_id = 0;
+	ip_h.ip_off = 0;
+	ip_h.ip_ttl = ICMP_ECHO_TTL;
+	ip_h.ip_p = ip_protocol_icmp;
+	ip_h.ip_sum = 0;
+	ip_h.ip_src = sip_addr;
+	ip_h.ip_dst = tip_addr;
+	ip_h.ip_sum = cksum((const void*)&ip_h, sizeof(ip_h));
 	
+	icmp_hdr icmp_h;
+	icmp_h.icmp_type = icmp_echo_reply;
+	icmp_h.icmp_code = 0;
+	icmp_h.icmp_sum = 0;
+	
+	Buffer payload;
+	pack_hdr(payload, (uint8_t*)&icmp_h, sizeof(icmp_h));
+	pack_hdr(payload, (uint8_t*)data.data(), data.size());
+	
+	uint16_t chk = cksum((const void*)payload.data(), payload.size());
+	memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
+	
+	forward_ip_packet(ip_h, payload);
 }
 
 //////////////////////////////////////////////////////////////////////////

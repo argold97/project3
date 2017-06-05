@@ -62,7 +62,7 @@ public:
   handlePacket_icmp(const ip_hdr& ip_h, const Buffer& packet);
 
   void
-  send_icmp_echo_reply(uint32_t tip_addr, const Buffer& data);
+  send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const Buffer& data);
 
   /**
    * USE THIS METHOD TO SEND PACKETS

@@ -55,6 +55,10 @@
 #define IP_ADDR_LEN 4
 #endif
 
+#ifndef ICMP_ECHO_TTL
+#define ICMP_ECHO_TTL 64
+#endif
+
 namespace simple_router {
 
 using Buffer = std::vector<unsigned char>;
@@ -127,6 +131,10 @@ enum ip_protocol {
   ip_protocol_icmp = 0x0001,
 };
 
+enum ip_version {
+	ip_v4 = 0x0004,
+};
+
 enum ethertype {
   ethertype_arp = 0x0806,
   ethertype_ip = 0x0800,
@@ -141,6 +149,20 @@ enum arp_hrd_fmt {
   arp_hrd_ethernet = 0x0001,
 };
 
+enum icmp_type {
+	icmp_echo = 0x0008,
+	icmp_echo_reply = 0x0000,
+	icmp_time_exceeded = 0x000B,
+	icmp_dest_unreachable = 0x0003,
+};
+
+enum icmp_t3_code {
+	icmp_t3_dest_unreachable = 0x0003,
+};
+
+enum icmp_t11_code {
+	icmp_t11_ttl_exceeded = 0x0000,
+};
 
 struct arp_hdr
 {
