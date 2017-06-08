@@ -202,7 +202,16 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 void
 SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 {
-	
+  if (ip_h.ip_ttl == 0)
+  {
+    //CREATE NEW PACKET WITH ICMP MESSAGE; SET TTL=64
+    //SEND ICMP PACKET: TIME EXCEEDED MESSAGE, TYPE=11, CODE=0
+    return;
+  }
+	ip_h.ip_ttl--;
+  ip_h.sum = 0; //reset checksum value, then recompute
+  ip_h.sum = cksum((const void*)&ip_h, sizeof(ip_h));
+  send_ip_packet(ip_h, payload);
 }
 
 void
@@ -291,6 +300,7 @@ SimpleRouter::send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const B
 	memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
 	
 	send_ip_packet(ip_h, payload);
+
 }
 
 //////////////////////////////////////////////////////////////////////////
