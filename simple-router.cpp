@@ -234,8 +234,8 @@ SimpleRouter::send_icmp_timeout(const ip_hdr& old_ip_h, const Buffer& old_payloa
   timeout_icmp_packet.unused = 0;
   timeout_icmp_packet.next_mtu = 0;
   
-  memcpy((void*)timeout_icmp_packet.data, (const void*)&ip_h, sizeof(ip_h));
-  memcpy((void*)(timeout_icmp_packet.data + sizeof(ip_h)), (const void*)old_payload.data(), sizeof(timeout_icmp_packet.data) - sizeof(ip_h));
+  memcpy((void*)timeout_icmp_packet.data, (const void*)&old_ip_h, sizeof(old_ip_h));
+  memcpy((void*)(timeout_icmp_packet.data + sizeof(old_ip_h)), (const void*)old_payload.data(), sizeof(timeout_icmp_packet.data) - sizeof(old_ip_h));
 
   Buffer payload;
   pack_hdr(payload, (uint8_t*)&timeout_icmp_packet, sizeof(timeout_icmp_packet));
