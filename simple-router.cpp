@@ -90,6 +90,9 @@ SimpleRouter::send_eth_frame(const Buffer& dhost, const Buffer& shost, uint16_t 
 	pack_hdr(frame, (uint8_t*)&ethernet_h, sizeof(ethernet_h));
 	pack_hdr(frame, (uint8_t*)payload.data(), payload.size());
 	
+	std::cerr << "Sent Packet:" << std::endl;
+	print_hdrs(frame);
+	
 	sendPacket(frame, outIface);
 }
 
@@ -220,7 +223,7 @@ SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 	const Interface* outIface = findIfaceByName(next_hop.ifName);
 	if(outIface == nullptr)
 	{
-		std::cerr << "Error: Missing iface" << next_hop.ifName << std::endl;
+		std::cerr << "Error: Missing iface " << next_hop.ifName << std::endl;
 		return;
 	}
 	
@@ -232,10 +235,7 @@ SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 	
 	if(entry != nullptr)
 	{
-		std::cerr << "MAC: " << macToString(entry->mac) << std::endl;
-		
 		send_eth_frame(entry->mac, outIface->addr, ethertype_ip, next_hop.ifName, packet);
-		
 		free(entry.get());
 	}else {
 		m_arp.queueRequest(ip_h.ip_dst, packet, next_hop.ifName, ethertype_ip);
