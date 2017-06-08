@@ -59,7 +59,10 @@ public:
   send_arp_request(uint32_t tip_addr, const std::string& outIface);
 
   void
-  forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
+  send_timeout_icmp_packet(const icmp_t3_hdr& icmp_h, const ip_hdr& old_ip_h);
+
+  void
+  forward_ip_packet(ip_hdr& ip_h, const Buffer& payload);
   
   void
   send_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
