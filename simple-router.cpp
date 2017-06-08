@@ -238,8 +238,9 @@ SimpleRouter::forward_ip_packet(ip_hdr& ip_h, const Buffer& payload)
   	Buffer new_data;
 
    pack_hdr(new_data, (uint8_t*)& ip_h, sizeof(ip_h));
-   pack_hdr(new_data, (uint8_t*)& payload, 8);
-   timeout_icmp_packet.data = new_data.data();
+   pack_hdr(new_data, (uint8_t*)payload.data(), 8);
+   memcpy(timeout_icmp_packet.data, (uint8_t*)new_data.data(), 28);
+   //timeout_icmp_packet.data = (uint8_t*)new_data.data();
     send_timeout_icmp_packet(timeout_icmp_packet, ip_h);
     //CREATE NEW PACKET WITH ICMP MESSAGE; SET TTL=64
     //SEND ICMP PACKET: TIME EXCEEDED MESSAGE, TYPE=11, CODE=0
