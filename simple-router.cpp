@@ -200,7 +200,34 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 }
 
 void
-SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
+SimpleRouter::send_timeout_icmp_packet(const icmp_t3_hdr& icmp_h, const ip_hdr& old_ip_h)
+{
+  ip_hdr ip_h;
+  ip_h.ip_hl = sizeof(ip_h) / 4;
+  ip_h.ip_v = ip_v4;
+  ip_h.ip_tos = 0;
+  ip_h.ip_len = sizeof(old_ip_h); //check this
+  ip_h.ip_id = 0;
+  ip_h.ip_off = 0;
+  ip_h.ip_ttl = ICMP_ECHO_TTL;
+  ip_h.ip_p = ip_protocol_icmp;
+  ip_h.ip_sum = 0;
+  ip_h.ip_src = old_ip_h.ip_dst;
+  ip_h.ip_dst = old_ip_h.ip_src;
+  ip_h.ip_sum = cksum((const void*)&ip_h, sizeof(ip_h));
+
+  Buffer payload;
+  pack_hdr(payload, (uint8_t*)&icmp_h, sizeof(icmp_h));
+  pack_hdr(payload, icmp_h.data, sizeof(icmp_h.data));
+
+  uint16_t chk = cksum((const void*)payload.data(), payload.size());
+  memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
+
+  send_ip_packet(ip_h, payload);
+}
+
+void
+SimpleRouter::forward_ip_packet(ip_hdr& ip_h, const Buffer& payload)
 {
   if (ip_h.ip_ttl == 0)
   {
@@ -208,45 +235,20 @@ SimpleRouter::forward_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
   	timeout_icmp_packet.icmp_type = 11;
   	timeout_icmp_packet.icmp_code = 0;
   	timeout_icmp_packet.icmp_sum = 0;
-  	//Buffer new_data;
-   pack_hdr(timeout_icmp_packet.data, (uint8_t*)& ip_h, sizeof(ip_h) );
-   pack_hdr(timeout_icmp_packet.data, (uint8_t*)& payload, 8);
-  	send_timeout_icmp_packet(timeout_icmp_packet, ip_h);
+  	Buffer new_data;
+
+   pack_hdr(new_data, (uint8_t*)& ip_h, sizeof(ip_h));
+   pack_hdr(new_data, (uint8_t*)& payload, 8);
+   timeout_icmp_packet.data = new_data.data();
+    send_timeout_icmp_packet(timeout_icmp_packet, ip_h);
     //CREATE NEW PACKET WITH ICMP MESSAGE; SET TTL=64
     //SEND ICMP PACKET: TIME EXCEEDED MESSAGE, TYPE=11, CODE=0
     return;
   }
   ip_h.ip_ttl--;
-  ip_h.sum = 0; //reset checksum value, then recompute
-  ip_h.sum = cksum((const void*)&ip_h, sizeof(ip_h));
+  ip_h.ip_sum = 0; //reset checksum value, then recompute
+  ip_h.ip_sum = cksum((const void*)&ip_h, sizeof(ip_h));
   send_ip_packet(ip_h, payload);
-}
-
-void
-SimpleRouter::send_timeout_icmp_packet(const icmp_t3_hdr& icmp_h, const ip_hdr& old_ip_h)
-{
-	ip_hdr ip_h;
-	ip_h.ip_hl = sizeof(ip_h) / 4;
-	ip_h.ip_v = ip_v4;
-	ip_h.ip_tos = 0;
-	ip_h.ip_len = sizeof(ip_h) + data.size();
-	ip_h.ip_id = 0;
-	ip_h.ip_off = 0;
-	ip_h.ip_ttl = ICMP_ECHO_TTL;
-	ip_h.ip_p = ip_protocol_icmp;
-	ip_h.ip_sum = 0;
-	ip_h.ip_src = old_ip_h.ip_dst;
-	ip_h.ip_dst = old_ip_h.ip_src;
-	ip_h.ip_sum = cksum((const void*)&ip_h, sizeof(ip_h));
-
-	Buffer payload;
-	pack_hdr(payload, (uint8_t*)&icmp_h, sizeof(icmp_h));
-	pack_hdr(payload, icmp_h.data, sizeof(icmp_h.data));
-
-	uint16_t chk = cksum((const void*)payload.data(), payload.size());
-	memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
-
-	send_ip_packet(ip_h, payload);
 }
 
 void
