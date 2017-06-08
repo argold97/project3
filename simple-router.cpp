@@ -69,7 +69,7 @@ SimpleRouter::handlePacket(const Buffer& packet, const std::string& inIface)
 		handlePacket_arp(payload, inIface);
 		break;
 	  case ethertype_ip:
-		handlePacket_ip(payload);
+		handlePacket_ip(payload, inIface);
 		break;
 	  default:
 		std::cerr << "Dropped packet: Bad type" << std::endl;
@@ -175,7 +175,7 @@ SimpleRouter::send_arp_request(uint32_t tip_addr, const std::string& outIface)
 }
 
 void 
-SimpleRouter::handlePacket_ip(const Buffer& packet)
+SimpleRouter::handlePacket_ip(const Buffer& packet, const std::string& inIface)
 {
 	if(packet.size() < sizeof(ip_hdr))
 		return;
@@ -201,7 +201,7 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 	const Interface* dest_iface = findIfaceByIp(ip_h.ip_dst);
 	
 	if(dest_iface == nullptr)
-		forward_ip_packet(ip_h, payload);
+		forward_ip_packet(ip_h, payload, inIface);
 	else if(ip_h.ip_p == ip_protocol_icmp)
 		handlePacket_icmp(ip_h, payload);
 	else
@@ -209,50 +209,49 @@ SimpleRouter::handlePacket_ip(const Buffer& packet)
 }
 
 void
-SimpleRouter::send_timeout_icmp_packet(const icmp_t3_hdr& icmp_h, const ip_hdr& old_ip_h)
+SimpleRouter::send_icmp_timeout(const ip_hdr& old_ip_h, const Buffer& old_payload, uint32_t srcIp)
 {
+    //CREATE NEW PACKET WITH ICMP MESSAGE; SET TTL=64
+    //SEND ICMP PACKET: TIME EXCEEDED MESSAGE, TYPE=11, CODE=0
   ip_hdr ip_h;
   ip_h.ip_hl = sizeof(ip_h) / 4;
   ip_h.ip_v = ip_v4;
   ip_h.ip_tos = 0;
-  ip_h.ip_len = sizeof(old_ip_h); //check this
+  ip_h.ip_len = htons(sizeof(ip_hdr) + sizeof(icmp_t3_hdr)); //check this
   ip_h.ip_id = 0;
   ip_h.ip_off = 0;
   ip_h.ip_ttl = ICMP_ECHO_TTL;
   ip_h.ip_p = ip_protocol_icmp;
   ip_h.ip_sum = 0;
-  ip_h.ip_src = old_ip_h.ip_dst;
+  ip_h.ip_src = srcIp;
   ip_h.ip_dst = old_ip_h.ip_src;
   ip_h.ip_sum = cksum((const void*)&ip_h, sizeof(ip_h));
+  
+  icmp_t3_hdr timeout_icmp_packet;
+  timeout_icmp_packet.icmp_type = 11;
+  timeout_icmp_packet.icmp_code = 0;
+  timeout_icmp_packet.icmp_sum = 0;
+  timeout_icmp_packet.unused = 0;
+  timeout_icmp_packet.next_mtu = 0;
+  
+  memcpy((void*)timeout_icmp_packet.data, (const void*)&ip_h, sizeof(ip_h));
+  memcpy((void*)(timeout_icmp_packet.data + sizeof(ip_h)), (const void*)old_payload.data(), sizeof(timeout_icmp_packet.data) - sizeof(ip_h));
 
   Buffer payload;
-  pack_hdr(payload, (uint8_t*)&icmp_h, sizeof(icmp_h));
-  pack_hdr(payload, icmp_h.data, sizeof(icmp_h.data));
-
+  pack_hdr(payload, (uint8_t*)&timeout_icmp_packet, sizeof(timeout_icmp_packet));
   uint16_t chk = cksum((const void*)payload.data(), payload.size());
-  memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
+  memcpy((void*)(payload.data() + sizeof(timeout_icmp_packet.icmp_type) + sizeof(timeout_icmp_packet.icmp_code)), (const void*)&chk, sizeof(chk));
 
   send_ip_packet(ip_h, payload);
 }
 
 void
-SimpleRouter::forward_ip_packet(ip_hdr& ip_h, const Buffer& payload)
+SimpleRouter::forward_ip_packet(ip_hdr& ip_h, const Buffer& payload, const std::string& inIface)
 {
-  if (ip_h.ip_ttl == 0)
+  if (ip_h.ip_ttl <= 1)
   {
-  	icmp_t3_hdr timeout_icmp_packet;
-  	timeout_icmp_packet.icmp_type = 11;
-  	timeout_icmp_packet.icmp_code = 0;
-  	timeout_icmp_packet.icmp_sum = 0;
-  	Buffer new_data;
-
-   pack_hdr(new_data, (uint8_t*)& ip_h, sizeof(ip_h));
-   pack_hdr(new_data, (uint8_t*)payload.data(), 8);
-   memcpy(timeout_icmp_packet.data, (uint8_t*)new_data.data(), 28);
-   //timeout_icmp_packet.data = (uint8_t*)new_data.data();
-    send_timeout_icmp_packet(timeout_icmp_packet, ip_h);
-    //CREATE NEW PACKET WITH ICMP MESSAGE; SET TTL=64
-    //SEND ICMP PACKET: TIME EXCEEDED MESSAGE, TYPE=11, CODE=0
+	const Interface* iface = findIfaceByName(inIface);
+    send_icmp_timeout(ip_h, payload, iface->ip);
     return;
   }
   ip_h.ip_ttl--;

@@ -50,7 +50,7 @@ public:
   handlePacket_arp(const Buffer& packet, const std::string& inIface);
   
   void 
-  handlePacket_ip(const Buffer& packet);
+  handlePacket_ip(const Buffer& packet, const std::string& inIface);
   
   void 
   send_arp_reply(const arp_hdr& arp_r, const std::string& inIface);
@@ -59,10 +59,10 @@ public:
   send_arp_request(uint32_t tip_addr, const std::string& outIface);
 
   void
-  send_timeout_icmp_packet(const icmp_t3_hdr& icmp_h, const ip_hdr& old_ip_h);
+  send_icmp_timeout(const ip_hdr& old_ip_h, const Buffer& old_payload, uint32_t srcIp);
 
   void
-  forward_ip_packet(ip_hdr& ip_h, const Buffer& payload);
+  forward_ip_packet(ip_hdr& ip_h, const Buffer& payload, const std::string& inIface);
   
   void
   send_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
