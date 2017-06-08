@@ -86,16 +86,20 @@ struct PendingPacket
 {
   Buffer packet;     //< A raw Ethernet frame, presumably with the dest MAC empty
   std::string iface; //< The outgoing interface
+  uint16_t ethertype;
 };
 
 struct ArpRequest {
-  ArpRequest(uint32_t ip)
+  ArpRequest(uint32_t ip, const std::string& outIface)
     : ip(ip)
     , nTimesSent(0)
   {
+	  iface = outIface;
   }
 
   uint32_t ip;
+  
+  std::string iface;
 
   /**
    * Last time this ARP request was sent. You should update this. If
@@ -142,6 +146,9 @@ public:
    */
   void
   periodicCheckArpRequestsAndCacheEntries();
+  
+  void
+  addArpEntry(const Buffer& mac, uint32_t ip);
 
   /**
    * Checks if an IP->MAC mapping is in the cache. IP is in network byte order.
@@ -160,7 +167,7 @@ public:
    * can remove the ARP request from the queue by calling sr_arpreq_destroy.
    */
   std::shared_ptr<ArpRequest>
-  queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface);
+  queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface, uint16_t ethertype);
 
   /*
    * Frees all memory associated with this arp request entry. If this arp request

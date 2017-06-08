@@ -30,9 +30,45 @@ namespace simple_router {
 void
 ArpCache::periodicCheckArpRequestsAndCacheEntries()
 {
+  for(std::list<std::shared_ptr<ArpRequest>>::iterator itr = m_arpRequests.begin(); itr != m_arpRequests.end(); itr++)
+  {
+	  ArpRequest* req = itr->get();
+	  if(req->nTimesSent >= MAX_SENT_TIME)
+	  {
+		  //Send ICMP Dest Unreachable
+		  removeRequest(*itr);
+		  continue;
+	  }
+	  req->nTimesSent++;
+	  m_router.send_arp_request(req->ip, req->iface);
+  }
+  time_point curr_time;
+  for(std::list<std::shared_ptr<ArpEntry>>::iterator itr = m_cacheEntries.begin(); itr != m_cacheEntries.end(); itr++)
+  {
+	  if(itr->get()->timeAdded + SR_ARPCACHE_TO < curr_time)
+		  m_cacheEntries.erase(itr);
+  }
+}
 
-  // FILL THIS IN
-
+void
+ArpCache::addArpEntry(const Buffer& mac, uint32_t ip)
+{
+	std::shared_ptr<ArpRequest> req_s = insertArpEntry(mac, ip);
+	if(req_s != nullptr)
+	{
+		ArpRequest* req = req_s.get();
+		for(std::list<PendingPacket>::iterator itr = req->packets.begin(); itr != req->packets.end(); itr++)
+		{
+			const Interface* iface = m_router.findIfaceByName(itr->iface);
+			if(iface != nullptr)
+			{
+				m_router.send_eth_frame(mac, iface->addr, itr->ethertype, itr->iface, itr->packet);
+			}else {
+				std::cerr << "Missing iface " << itr->iface << std::endl;
+			}
+		}
+	}
+	removeRequest(req_s);
 }
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -67,7 +103,7 @@ ArpCache::lookup(uint32_t ip)
 }
 
 std::shared_ptr<ArpRequest>
-ArpCache::queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface)
+ArpCache::queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface, uint16_t ethertype)
 {
   std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -77,11 +113,11 @@ ArpCache::queueRequest(uint32_t ip, const Buffer& packet, const std::string& ifa
                            });
 
   if (request == m_arpRequests.end()) {
-    request = m_arpRequests.insert(m_arpRequests.end(), std::make_shared<ArpRequest>(ip));
+    request = m_arpRequests.insert(m_arpRequests.end(), std::make_shared<ArpRequest>(ip, iface));
   }
 
   // Add the packet to the list of packets for this request
-  (*request)->packets.push_back({packet, iface});
+  (*request)->packets.push_back({packet, iface, ethertype});
   return *request;
 }
 

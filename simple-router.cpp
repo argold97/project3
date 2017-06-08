@@ -90,6 +90,10 @@ SimpleRouter::send_eth_frame(const Buffer& dhost, const Buffer& shost, uint16_t 
 	pack_hdr(frame, (uint8_t*)&ethernet_h, sizeof(ethernet_h));
 	pack_hdr(frame, (uint8_t*)payload.data(), payload.size());
 	
+	std::cerr << "Sent Packet:" << std::endl;
+	print_hdrs(frame);
+	std::cerr << std::endl;
+	
 	sendPacket(frame, outIface);
 }
 
@@ -98,8 +102,9 @@ SimpleRouter::handlePacket_arp(const Buffer& packet, const std::string& inIface)
 {
 	arp_hdr arp_h;
 	memcpy((void*)&arp_h, (const void*)packet.data(), sizeof(arp_hdr));
+	uint16_t opcode = ntohs(arp_h.arp_op);
 	
-	if(ntohs(arp_h.arp_op) == arp_op_request)
+	if(opcode == arp_op_request)
 	{
 		if(findIfaceByIp(arp_h.arp_tip) == findIfaceByName(inIface))
 		{
@@ -108,7 +113,11 @@ SimpleRouter::handlePacket_arp(const Buffer& packet, const std::string& inIface)
 			std::cerr << "Dropped ARP request: Bad target IP" << std::endl;
 		}
 		return;
-	}
+	}else if(opcode == arp_op_reply)
+	{
+		m_arp.addArpEntry(array_to_buffer(arp_h.arp_sha, ETHER_ADDR_LEN), arp_h.arp_sip);
+	}else
+		std::cerr << "Dropped ARP packet: Unknown opcode" <<std::endl;
 }
 
 void
@@ -117,7 +126,7 @@ SimpleRouter::send_arp_reply(const arp_hdr& arp_r, const std::string& inIface)
 	const Interface* iface = findIfaceByName(inIface);
 	if(iface == nullptr)
 	{
-		std::cerr << "Error: Missing iface" << std::endl;
+		std::cerr << "Error: Missing iface " << inIface << std::endl;
 		return;
 	}
 	
@@ -144,7 +153,7 @@ SimpleRouter::send_arp_request(uint32_t tip_addr, const std::string& outIface)
 	const Interface* iface = findIfaceByName(outIface);
 	if(iface == nullptr)
 	{
-		std::cerr << "Error: Missing iface" << std::endl;
+		std::cerr << "Error: Missing iface " << outIface << std::endl;
 		return;
 	}
 	
@@ -262,25 +271,22 @@ SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 	const Interface* outIface = findIfaceByName(next_hop.ifName);
 	if(outIface == nullptr)
 	{
-		std::cerr << "Error: Missing iface" << std::endl;
+		std::cerr << "Error: Missing iface " << next_hop.ifName << std::endl;
 		return;
 	}
+	
+	Buffer packet;
+	pack_hdr(packet, (uint8_t*)&ip_h, sizeof(ip_h));
+	pack_hdr(packet, (uint8_t*)payload.data(), payload.size());
 	
 	std::shared_ptr<ArpEntry> entry = m_arp.lookup(next_hop.gw);
 	
 	if(entry != nullptr)
 	{
-		std::cerr << "MAC: " << macToString(entry->mac) << std::endl;
-		
-		Buffer packet;
-		pack_hdr(packet, (uint8_t*)&ip_h, sizeof(ip_h));
-		pack_hdr(packet, (uint8_t*)payload.data(), payload.size());
-		
 		send_eth_frame(entry->mac, outIface->addr, ethertype_ip, next_hop.ifName, packet);
-		
-		free(entry.get());
+		//free(entry.get());
 	}else {
-		
+		m_arp.queueRequest(ip_h.ip_dst, packet, next_hop.ifName, ethertype_ip);
 	}
 }
 
@@ -316,7 +322,7 @@ SimpleRouter::send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const B
 	ip_h.ip_hl = sizeof(ip_h) / 4;
 	ip_h.ip_v = ip_v4;
 	ip_h.ip_tos = 0;
-	ip_h.ip_len = sizeof(ip_h) + data.size();
+	ip_h.ip_len = htons(sizeof(ip_h) + sizeof(icmp_hdr) + data.size());
 	ip_h.ip_id = 0;
 	ip_h.ip_off = 0;
 	ip_h.ip_ttl = ICMP_ECHO_TTL;
