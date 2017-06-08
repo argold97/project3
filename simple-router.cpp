@@ -92,6 +92,7 @@ SimpleRouter::send_eth_frame(const Buffer& dhost, const Buffer& shost, uint16_t 
 	
 	std::cerr << "Sent Packet:" << std::endl;
 	print_hdrs(frame);
+	std::cerr << std::endl;
 	
 	sendPacket(frame, outIface);
 }
@@ -236,7 +237,7 @@ SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 	if(entry != nullptr)
 	{
 		send_eth_frame(entry->mac, outIface->addr, ethertype_ip, next_hop.ifName, packet);
-		free(entry.get());
+		//free(entry.get());
 	}else {
 		m_arp.queueRequest(ip_h.ip_dst, packet, next_hop.ifName, ethertype_ip);
 	}
@@ -273,7 +274,7 @@ SimpleRouter::send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const B
 	ip_h.ip_hl = sizeof(ip_h) / 4;
 	ip_h.ip_v = ip_v4;
 	ip_h.ip_tos = 0;
-	ip_h.ip_len = sizeof(ip_h) + data.size();
+	ip_h.ip_len = htons(sizeof(ip_h) + sizeof(icmp_hdr) + data.size());
 	ip_h.ip_id = 0;
 	ip_h.ip_off = 0;
 	ip_h.ip_ttl = ICMP_ECHO_TTL;
