@@ -1,38 +1,80 @@
-UCLA CS118 Project 3 (Simple Router)
+UCLA CS118 Project 3 (Simple Router) COVFEFE    
 ====================================
 
 Nicholas Turk - 004579860 
 Uday Alla - 404428077 
-Alex Gold - 804561696
+Alex Gold - 804561696 
 
-For more detailed information about the project and starter code, refer to the [project description](http://web.cs.ucla.edu/classes/spring17/cs118/project-3.html).
+-All of us worked on everything. 
 
-(For build dependencies, please refer to [`Vagrantfile`](Vagrantfile).)
+Succesfully implemented the following functions:
+	
+	- void SimpleRouter::handlePacket(const Buffer& packet, const std::string& inIface);
+		1. Extract iface 
+		2. Construct Ethernet header from the input packet 
+		3. Find destination iface by destination MAC address 
+		4. Make payload(Packet data + ethernet header)
+		5. Check packet type
+			6. if ARP type
+				- handle ARP Packet
+					-extract arp header from arp packet 
+					-find op_code to check if  it is an ARP request/reply 
+					-if it is a request, send reply
+					-if it is a reply, add it as an arp entry to the arp cache
+		    7. if IP type 
+		    	-  handle IP packet
+		    		-extract ip header from ip packet
+		    		-calculate checksum and check if valid
+		    		-create ip payload with packet data and ip header
+		    		-find destination iface by ip from ip header
+		    		- 1.if destination iface not found, forward ip packet to passed-in iface
+		    			-check ttl
+		    				- if 1 send ICMP timeout 
+		    				- else decrement ttl, recompute checksum and send IP packet 
+		    		-2. else if ip_protocol is icmp, handle icmp packet
+		    				- extract ICMP header from ICMP packet (woosh)
+		    				- compute checksum 
+		    			 	- check ICMP type:
+		    			 		-if ECHO send ICMP_ECHO_REPLY
+		    			 		- else drop packet
 
-## Makefile
 
-The provided `Makefile` provides several targets, including to build `router` implementation.  The starter code includes only the framework to receive raw Ethernet frames and to send Ethernet frames to the desired interfaces.  Your job is to implement the routers logic.
+	- void ArpCache::periodicCheckArpRequestsAndCacheEntries(); 
+		1. iterate through ARP cache
+		2. for each ARP request:
+			-check number of times sent 
+			-if sent 5 or more times drop/remove request from cache
+			-else send ARP request 
+				- extract destination interface
+				-create the ARP header and fill the header with infromation extracted from the interface and default  values
+				-then pack the arp header into a packet
+				- send packet
+		3. iterate through the ARP cache again and if the entry exceeed 30s remove it 
 
-Additionally, the `Makefile` a `clean` target, and `tarball` target to create the submission file as well.
+	- RoutingTableEntry RoutingTable::lookup(uint32_t ip) const;
+		1. iterate through the routing table
+		2. Use longestPrefixMatching algorithm to find the next forwarding ip 
 
-You will need to modify the `Makefile` to add your userid for the `.tar.gz` turn-in at the top of the file.
+Problem we ran into:
 
-## Academic Integrity Note
+	- Big endian / little endian confusion for computing checksums
 
-You are encouraged to host your code in private repositories on [GitHub](https://github.com/), [GitLab](https://gitlab.com), or other places.  At the same time, you are PROHIBITED to make your code for the class project public during the class or any time after the class.  If you do so, you will be violating academic honestly policy that you have signed, as well as the student code of conduct and be subject to serious sanctions.
+	- Byte order 
 
-## Known Limitations
+	- figuring out traceroute was hard (still in the process of learning)
 
-When POX controller is restrated, the simpler router needs to be manually stopped and started again.
+Libraries used:
 
-## Acknowledgement
+	C++11 standard library
 
-This implementation is based on the original code for Stanford CS144 lab3 (https://bitbucket.org/cs144-1617/lab3).
+	netdb
 
-## TODO
+	socket
 
-    ###########################################################
-    ##                                                       ##
-    ## REPLACE CONTENT OF THIS FILE WITH YOUR PROJECT REPORT ##
-    ##                                                       ##
-    ###########################################################
+	arpa/inet
+
+Online tutorials:
+
+	Man pages on https://linux.die.net
+	
+	C++ reference guide on http://www.cplusplus.com 
