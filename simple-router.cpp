@@ -204,8 +204,8 @@ SimpleRouter::handlePacket_ip(const Buffer& packet, const std::string& inIface)
 		forward_ip_packet(ip_h, payload, inIface);
 	else if(ip_h.ip_p == ip_protocol_icmp)
 		handlePacket_icmp(ip_h, payload);
-	else
-		std::cerr << "Dropped IP packet: Addressed to router but no ICMP message" << std::endl;
+	else if(ip_h.ip_p == 6 || ip_h.ip_p == 17)
+		send_icmp_unreachable(ip_h, payload, ip_h.ip_dst);
 }
 
 void
