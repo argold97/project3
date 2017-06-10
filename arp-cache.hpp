@@ -86,6 +86,7 @@ struct PendingPacket
 {
   Buffer packet;     //< A raw Ethernet frame, presumably with the dest MAC empty
   std::string iface; //< The outgoing interface
+  std::string inIface;
   uint16_t ethertype;
 };
 
@@ -167,7 +168,7 @@ public:
    * can remove the ARP request from the queue by calling sr_arpreq_destroy.
    */
   std::shared_ptr<ArpRequest>
-  queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface, uint16_t ethertype);
+  queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface, const std::string& inIface, uint16_t ethertype);
 
   /*
    * Frees all memory associated with this arp request entry. If this arp request

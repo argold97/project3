@@ -27,26 +27,48 @@ namespace simple_router {
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 // IMPLEMENT THIS METHOD
+
 void
 ArpCache::periodicCheckArpRequestsAndCacheEntries()
 {
-  for(std::list<std::shared_ptr<ArpRequest>>::iterator itr = m_arpRequests.begin(); itr != m_arpRequests.end(); itr++)
+  m_mutex.lock();
+  std::list<PendingPacket> icmpReplies;
+  for(std::list<std::shared_ptr<ArpRequest>>::iterator itr = m_arpRequests.begin(); itr != m_arpRequests.end();)
   {
 	  ArpRequest* req = itr->get();
 	  if(req->nTimesSent >= MAX_SENT_TIME)
 	  {
-		  //Send ICMP Dest Unreachable
-		  removeRequest(*itr);
+		  for(std::list<PendingPacket>::iterator pend = req->packets.begin(); pend != req->packets.end(); pend++)
+			icmpReplies.push_back(*pend);
+		  m_mutex.unlock();
+		  removeRequest(*(itr++));
+		  m_mutex.lock();
 		  continue;
 	  }
 	  req->nTimesSent++;
 	  m_router.send_arp_request(req->ip, req->iface);
+	  itr++;
   }
   time_point curr_time;
   for(std::list<std::shared_ptr<ArpEntry>>::iterator itr = m_cacheEntries.begin(); itr != m_cacheEntries.end(); itr++)
   {
 	  if(itr->get()->timeAdded + SR_ARPCACHE_TO < curr_time)
 		  m_cacheEntries.erase(itr);
+  }
+  m_mutex.unlock();
+  
+  for(std::list<PendingPacket>::iterator itr = icmpReplies.begin(); itr != icmpReplies.end(); itr++)
+  {
+	ip_hdr ip_h;
+	memcpy((void*)&ip_h, (const void*)itr->packet.data(), sizeof(ip_h));
+	Buffer payload = array_to_buffer((uint8_t*)itr->packet.data() + sizeof(ip_h), itr->packet.size() - sizeof(ip_h));
+	const Interface* iface = m_router.findIfaceByName(itr->inIface);
+	if(iface == nullptr)
+	{
+		std::cerr << "Error: Missing iface " << itr->inIface << std::endl;
+		continue;
+	}
+	m_router.send_icmp_unreachable(ip_h, payload, iface->ip);
   }
 }
 
@@ -103,7 +125,7 @@ ArpCache::lookup(uint32_t ip)
 }
 
 std::shared_ptr<ArpRequest>
-ArpCache::queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface, uint16_t ethertype)
+ArpCache::queueRequest(uint32_t ip, const Buffer& packet, const std::string& iface, const std::string& inIface, uint16_t ethertype)
 {
   std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -117,7 +139,7 @@ ArpCache::queueRequest(uint32_t ip, const Buffer& packet, const std::string& ifa
   }
 
   // Add the packet to the list of packets for this request
-  (*request)->packets.push_back({packet, iface, ethertype});
+  (*request)->packets.push_back({packet, iface, inIface, ethertype});
   return *request;
 }
 
@@ -168,15 +190,15 @@ ArpCache::ticker()
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     {
-      std::lock_guard<std::mutex> lock(m_mutex);
+      //std::lock_guard<std::mutex> lock(m_mutex);
 
-      auto now = steady_clock::now();
+      /*auto now = steady_clock::now();
 
       for (auto& entry : m_cacheEntries) {
         if (entry->isValid && (now - entry->timeAdded > SR_ARPCACHE_TO)) {
           entry->isValid = false;
         }
-      }
+      }*/
 
       periodicCheckArpRequestsAndCacheEntries();
     }

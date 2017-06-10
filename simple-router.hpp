@@ -68,7 +68,7 @@ public:
   forward_ip_packet(ip_hdr& ip_h, const Buffer& payload, const std::string& inIface);
   
   void
-  send_ip_packet(const ip_hdr& ip_h, const Buffer& payload);
+  send_ip_packet(const ip_hdr& ip_h, const Buffer& payload, const std::string& inIface);
   
   void
   handlePacket_icmp(const ip_hdr& ip_h, const Buffer& packet);

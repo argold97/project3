@@ -242,7 +242,7 @@ SimpleRouter::send_icmp_timeout(const ip_hdr& old_ip_h, const Buffer& old_payloa
   uint16_t chk = cksum((const void*)payload.data(), payload.size());
   memcpy((void*)(payload.data() + sizeof(timeout_icmp_packet.icmp_type) + sizeof(timeout_icmp_packet.icmp_code)), (const void*)&chk, sizeof(chk));
 
-  send_ip_packet(ip_h, payload);
+  send_ip_packet(ip_h, payload, "");
 }
 
 void
@@ -250,6 +250,7 @@ SimpleRouter::send_icmp_unreachable(const ip_hdr& old_ip_h, const Buffer& old_pa
 {
     //CREATE NEW PACKET WITH ICMP MESSAGE; SET TTL=64
     //SEND ICMP PACKET: TIME EXCEEDED MESSAGE, TYPE=11, CODE=0
+	
   ip_hdr ip_h;
   ip_h.ip_hl = sizeof(ip_h) / 4;
   ip_h.ip_v = ip_v4;
@@ -279,7 +280,7 @@ SimpleRouter::send_icmp_unreachable(const ip_hdr& old_ip_h, const Buffer& old_pa
   uint16_t chk = cksum((const void*)payload.data(), payload.size());
   memcpy((void*)(payload.data() + sizeof(timeout_icmp_packet.icmp_type) + sizeof(timeout_icmp_packet.icmp_code)), (const void*)&chk, sizeof(chk));
 
-  send_ip_packet(ip_h, payload);
+  send_ip_packet(ip_h, payload, "");
 }
 
 void
@@ -294,11 +295,11 @@ SimpleRouter::forward_ip_packet(ip_hdr& ip_h, const Buffer& payload, const std::
   ip_h.ip_ttl--;
   ip_h.ip_sum = 0; //reset checksum value, then recompute
   ip_h.ip_sum = cksum((const void*)&ip_h, sizeof(ip_h));
-  send_ip_packet(ip_h, payload);
+  send_ip_packet(ip_h, payload, inIface);
 }
 
 void
-SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
+SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload, const std::string& inIface)
 {
 	RoutingTableEntry next_hop = getRoutingTable().lookup(ip_h.ip_dst);
 	
@@ -322,7 +323,7 @@ SimpleRouter::send_ip_packet(const ip_hdr& ip_h, const Buffer& payload)
 		send_eth_frame(entry->mac, outIface->addr, ethertype_ip, next_hop.ifName, packet);
 		//free(entry.get());
 	}else {
-		m_arp.queueRequest(ip_h.ip_dst, packet, next_hop.ifName, ethertype_ip);
+		m_arp.queueRequest(ip_h.ip_dst, packet, next_hop.ifName, inIface, ethertype_ip);
 	}
 }
 
@@ -380,7 +381,7 @@ SimpleRouter::send_icmp_echo_reply(uint32_t sip_addr, uint32_t tip_addr, const B
 	uint16_t chk = cksum((const void*)payload.data(), payload.size());
 	memcpy((void*)(payload.data() + sizeof(icmp_h.icmp_type) + sizeof(icmp_h.icmp_code)), (const void*)&chk, sizeof(chk));
 	
-	send_ip_packet(ip_h, payload);
+	send_ip_packet(ip_h, payload, "");
 
 }
 
