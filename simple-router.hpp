@@ -62,6 +62,9 @@ public:
   send_icmp_timeout(const ip_hdr& old_ip_h, const Buffer& old_payload, uint32_t srcIp);
 
   void
+  send_icmp_unreachable(const ip_hdr& old_ip_h, const Buffer& old_payload, uint32_t srcIp);
+
+  void
   forward_ip_packet(ip_hdr& ip_h, const Buffer& payload, const std::string& inIface);
   
   void
