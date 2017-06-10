@@ -76,10 +76,11 @@ namespace simple_router {
 class SimpleRouter;
 
 using steady_clock = std::chrono::steady_clock;
-using time_point = std::chrono::steady_clock::time_point;
+//using time_point = std::chrono::steady_clock::time_point;
 using seconds = std::chrono::seconds;
 
-const seconds SR_ARPCACHE_TO = seconds(30);
+//const seconds SR_ARPCACHE_TO = seconds(30);
+const time_t SR_ARPCACHE_TO = 30;
 const uint32_t MAX_SENT_TIME = 5;
 
 struct PendingPacket
@@ -96,6 +97,7 @@ struct ArpRequest {
     , nTimesSent(0)
   {
 	  iface = outIface;
+	  time(&timeSent);
   }
 
   uint32_t ip;
@@ -106,7 +108,8 @@ struct ArpRequest {
    * Last time this ARP request was sent. You should update this. If
    * the ARP request was never sent, timeSent == time_point()
    */
-  time_point timeSent;
+  //time_point timeSent;
+  time_t timeSent;
 
   /**
    * The number of times this request was sent. You should update this.
@@ -119,7 +122,8 @@ struct ArpRequest {
 struct ArpEntry {
   Buffer mac;
   uint32_t ip = 0; //< IP addr in network byte order
-  time_point timeAdded;
+  //time_point timeAdded;
+  time_t timeAdded;
   bool isValid = false;
 };
 

@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 
 namespace simple_router {
 
@@ -49,11 +50,17 @@ ArpCache::periodicCheckArpRequestsAndCacheEntries()
 	  m_router.send_arp_request(req->ip, req->iface);
 	  itr++;
   }
-  time_point curr_time;
-  for(std::list<std::shared_ptr<ArpEntry>>::iterator itr = m_cacheEntries.begin(); itr != m_cacheEntries.end(); itr++)
+  time_t curr_time;
+  time(&curr_time);
+  for(std::list<std::shared_ptr<ArpEntry>>::iterator itr = m_cacheEntries.begin(); itr != m_cacheEntries.end();)
   {
 	  if(itr->get()->timeAdded + SR_ARPCACHE_TO < curr_time)
-		  m_cacheEntries.erase(itr);
+	  {
+		  std::cerr << "Deleted ARP entry " << ipToString(itr->get()->ip) << " " << macToString(itr->get()->mac) << std::endl;
+		  m_cacheEntries.erase(itr++);
+	  }
+	  else
+		  itr++;
   }
   m_mutex.unlock();
   
@@ -158,7 +165,8 @@ ArpCache::insertArpEntry(const Buffer& mac, uint32_t ip)
   auto entry = std::make_shared<ArpEntry>();
   entry->mac = mac;
   entry->ip = ip;
-  entry->timeAdded = steady_clock::now();
+  //entry->timeAdded = steady_clock::now();
+  time(&entry->timeAdded);
   entry->isValid = true;
   m_cacheEntries.push_back(entry);
 
@@ -213,12 +221,15 @@ operator<<(std::ostream& os, const ArpCache& cache)
   os << "\nMAC            IP         AGE                       VALID\n"
      << "-----------------------------------------------------------\n";
 
-  auto now = steady_clock::now();
+  //auto now = steady_clock::now();
+  time_t curr_time;
+  time(&curr_time);
   for (const auto& entry : cache.m_cacheEntries) {
 
     os << macToString(entry->mac) << "   "
        << ipToString(entry->ip) << "   "
-       << std::chrono::duration_cast<seconds>((now - entry->timeAdded)).count() << " seconds   "
+       //<< std::chrono::duration_cast<seconds>((now - entry->timeAdded)).count() << " seconds   "
+       << curr_time - entry->timeAdded << " seconds   "
        << entry->isValid
        << "\n";
   }
