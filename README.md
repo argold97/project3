@@ -56,16 +56,25 @@ Succesfully implemented the following functions:
 		2. Use longestPrefixMatching algorithm to find the next forwarding ip 
 
 Problem we ran into:
+
 	- Big endian / little endian confusion for computing checksums
+
 	- Byte order 
+
 	- figuring out traceroute was hard (still in the process of learning)
 
 Libraries used:
+
 	C++11 standard library
+
 	netdb
+
 	socket
+
 	arpa/inet
 
 Online tutorials:
+
 	Man pages on https://linux.die.net
+	
 	C++ reference guide on http://www.cplusplus.com 
